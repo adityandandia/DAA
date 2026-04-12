@@ -1,108 +1,120 @@
-## Question 3 (D2): Exhaustive Search for a Minimum-Weight Hamiltonian Path
+## Question 9 (D2): The Selection Problem Using Quickselect
 
 ---
 
-### Task 1 — Exhaustive Search Strategy & Search Space Enumeration
+### Task 1 — Quickselect Algorithm Design (Decrease-by-Variable-Size Strategy)
 
-**Strategy:**
+**Core Idea:**
 
-The exhaustive search (brute-force) strategy for the Minimum-Weight Hamiltonian Path problem works as follows:
+Quickselect uses the **partition** step from Quicksort to reduce the problem size at each step without fully sorting the array. It is a classic example of the **decrease-by-variable-size** strategy because the amount by which the problem shrinks depends on where the pivot lands after partitioning.
 
-1. Fix the starting depot `s` as the first node.
-2. Generate **all permutations** of the remaining `(n - 1)` vertices.
-3. For each permutation, prepend `s` to form a candidate path of length `n`.
-4. Compute the total weight of the candidate path by summing edge weights along it.
-5. Track the permutation that yields the minimum total weight.
-6. Return the minimum-weight path and its cost.
+**Algorithm Design:**
 
-**Search Space Enumeration:**
+1. **Partition:** Choose a pivot (e.g., the last element). Rearrange the array so that:
+   - All elements < pivot are to its left.
+   - All elements > pivot are to its right.
+   - The pivot is now at its correct sorted position `p`.
 
-Since the depot `s` is fixed, we permute the remaining `(n − 1)` vertices. The total number of candidate paths is:
+2. **Decrease:**
+   - If `p == k−1`: the pivot **is** the k-th smallest element. Return it.
+   - If `p > k−1`: the k-th smallest lies in the **left** subarray. Recurse on `arr[lo..p−1]`.
+   - If `p < k−1`: the k-th smallest lies in the **right** subarray. Recurse on `arr[p+1..hi]`.
 
-```
-(n - 1)!
-```
+3. **Repeat** until the pivot index equals `k−1`.
 
-For example:
-| n | Candidates (n−1)! |
-|---|-------------------|
-| 4 | 6                 |
-| 5 | 24                |
-| 10 | 362,880          |
-| 15 | 87,178,291,200   |
-| 20 | ~1.216 × 10¹⁷    |
-
-Each candidate is a sequence `[s, v₁, v₂, ..., v_{n-1}]` where `{v₁, ..., v_{n-1}}` is a permutation of `V \ {s}`.
+This is "decrease-by-variable-size" because the problem size after each step is `p`, `p − lo`, or `hi − p`, depending on the pivot placement — not a fixed fraction.
 
 ---
 
 ### Task 2 — Algorithm Implementation
 
-See `q3_hamiltonian_path.c`.
+See `q9_quickselect.c`.
 
 ---
 
-### Task 3 — Number of Candidate Solutions for n Vertices
+### Task 3 — Problem Size Decrease at Each Step
 
-With the start vertex `s` fixed, the number of distinct candidate Hamiltonian paths is:
+Let the current subarray have size `m`. After one partition step:
+
+- Pivot lands at position `p` (0-indexed within the subarray).
+- **Left subarray size:** `p` elements.
+- **Right subarray size:** `m − p − 1` elements.
+- We recurse on one of these two, reducing the active search space.
+
+**Example (k = 3rd smallest, array of size 8):**
 
 ```
-T(n) = (n − 1)!
+Step 1: Array size = 8, pivot lands at index 5 → recurse left, size = 5
+Step 2: Array size = 5, pivot lands at index 1 → recurse right, size = 3
+Step 3: Array size = 3, pivot lands at index 2 → found (k−1 = 2) ✓
 ```
 
-This is because:
-- Position 1 is fixed (depot `s`): **1** choice.
-- Position 2: **(n − 1)** choices.
-- Position 3: **(n − 2)** choices.
-- ...
-- Position n: **1** choice.
+In the **best case**, the pivot always lands exactly at `k−1`, and the answer is found in 1 step: O(n).
 
-Total = `(n−1) × (n−2) × ... × 1 = (n−1)!`
+In the **average case**, pivot placement is random and roughly halves the subarray each time.
 
 ---
 
-### Task 4 — Time Complexity Analysis
+### Task 4 — Recurrence Relations
 
-Let `n` = number of vertices.
+**Average Case:**
 
-| Phase | Cost |
-|-------|------|
-| Generating each permutation | O(n) per permutation |
-| Computing path weight | O(n) per permutation |
-| Number of permutations | (n−1)! |
-
-**Total time complexity:**
+Assuming a random pivot uniformly splits the array, on average the recursion descends into a subarray of size `n/2`:
 
 ```
-T(n) = O(n · (n−1)!) = O(n!)
+T(n) = T(n/2) + O(n)
 ```
 
-**Space complexity:** O(n) for storing one permutation at a time (if done recursively with backtracking).
+Solving by the Master Theorem (Case 3 / geometric series):
+
+```
+T(n) = O(n)   [average case]
+```
+
+More precisely, summing the geometric series: `n + n/2 + n/4 + ... ≈ 2n = O(n)`.
+
+**Worst Case:**
+
+The worst case occurs when the pivot is always the smallest or largest element (already sorted array with naive pivot = last element), leading to a size reduction of only 1 each time:
+
+```
+T(n) = T(n−1) + O(n)
+```
+
+Solving by telescoping:
+
+```
+T(n) = n + (n−1) + (n−2) + ... + 1 = n(n+1)/2 = O(n²)   [worst case]
+```
 
 ---
 
-### Task 5 — Infeasibility for Large n & Problem Class
+### Task 5 — Analysis & Comparison with Sort-then-Index
 
-**Why it becomes infeasible:**
+**Quickselect Summary:**
 
-The `O(n!)` growth is superexponential — it dwarfs even exponential algorithms. A few data points assuming 10⁹ operations/second:
+| Case         | Recurrence         | Time Complexity |
+|--------------|--------------------|-----------------|
+| Average case | T(n) = T(n/2) + n  | O(n)            |
+| Worst case   | T(n) = T(n−1) + n  | O(n²)           |
 
-| n  | (n−1)! candidates | Approx. time      |
-|----|-------------------|-------------------|
-| 10 | 362,880           | < 1 ms            |
-| 15 | ~8.7 × 10¹⁰      | ~87 seconds       |
-| 20 | ~1.2 × 10¹⁷      | ~3,800 years      |
-| 25 | ~6.2 × 10²³      | longer than the age of the universe |
+**Sort-then-Index Approach:**
 
-For `n ≥ 20`, exhaustive search is completely impractical on any classical hardware.
+Sort the array using an O(n log n) algorithm (e.g., Merge Sort, Heap Sort), then directly access `arr[k−1]`.
 
-**Problem Class:**
+| Metric             | Sort-then-Index     | Quickselect (avg) | Quickselect (worst) |
+|--------------------|---------------------|-------------------|----------------------|
+| Time complexity    | O(n log n)          | **O(n)**          | O(n²)               |
+| Space complexity   | O(n) or O(log n)    | O(log n) stack    | O(n) stack (worst)  |
+| Repeated queries?  | O(1) per query after sort | O(n) per query | O(n²) per query |
+| Stability          | Stable (Merge Sort) | Not stable        | Not stable           |
 
-The Minimum-Weight Hamiltonian Path problem belongs to the class **NP-Hard**. It is a generalization of the **Travelling Salesman Problem (TSP)**, which is one of the most well-known NP-Hard problems.
+**Verdict:**
 
-- No polynomial-time algorithm is known for it.
-- It cannot be solved exactly in polynomial time unless **P = NP**.
-- For large `n`, practical approaches rely on **heuristics** (greedy nearest-neighbour), **metaheuristics** (simulated annealing, genetic algorithms), or **approximation algorithms** (Christofides' algorithm for metric TSP gives a 3/2-approximation).
+- For a **single k-th order statistic query** on an unsorted array, Quickselect's O(n) average case is clearly superior to O(n log n) sort.
+- For **multiple queries** on the same array, sort-then-index is better (one O(n log n) sort followed by O(1) lookups).
+- **Median-of-medians** is a deterministic O(n) worst-case algorithm, but with high constants — rarely used in practice.
+- For the **real-time bidding engine** scenario (single query per auction in microseconds), Quickselect with a random pivot is the right choice.
 
 ---
 ---
